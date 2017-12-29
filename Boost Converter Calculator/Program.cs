@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Codeplex.Data;
 
 namespace Boost_Converter_Calculator
 {
@@ -72,7 +74,7 @@ namespace Boost_Converter_Calculator
 
             help();
 
-            while(!quit)
+            while (!quit)
             {
                 darkgray();
                 w("[]>");
@@ -87,12 +89,14 @@ namespace Boost_Converter_Calculator
         static void help()
         {
             wl("=======================================================================================================================");
-            wl(" lv     == Print a list of the names of values used in the calculator, along with a brief explanation");
-            wl(" print  == Print a table of the values stored in memory");
-            wl(" calc   == Calculate values in the output table, then display the table");
-            wl(" calc_r == Calculate values in the output table with Vin incrementing from Vin_min to Vin_max, then display the table");
-            wl(" quit   == Quit the program");
-            wl(" help   == Display this help message");
+            wl(" lv          == Print a list of the names of values used in the calculator, along with a brief explanation");
+            wl(" print       == Print a table of the values stored in memory");
+            wl(" calc        == Calculate values in the output table, then display the table");
+            wl(" calc_r      == Calculate values in the output table with Vin incrementing from Vin_min to Vin_max, then display table");
+            wl(" save <file> == Save values in memory to file in JSON format, example: 'save values.json'");
+            wl(" load <file> == Load values from a previously saved JSON file, example: 'load values.json'");
+            wl(" quit        == Quit the program");
+            wl(" help        == Display this help message");
             wl("=======================================================================================================================");
         }
 
@@ -172,7 +176,7 @@ namespace Boost_Converter_Calculator
 
             wl("=======================================================================================================================\n|");
 
-            
+
 
             green();
 
@@ -301,8 +305,6 @@ namespace Boost_Converter_Calculator
             w(unit);
 
             gray();
-
-            
         }
 
         static bool exp(string key)
@@ -361,17 +363,15 @@ namespace Boost_Converter_Calculator
 
         static void HandleInput(string input)
         {
-            input = input.Replace(" ", "");
-
             if (input.Contains("="))
             {
                 string[] parts = input.Split('=');
 
                 if (parts.Length == 2)
                 {
-                    string var = parts[0];
+                    string var = parts[0].Trim();
 
-                    string value = parts[1];
+                    string value = parts[1].Trim();
 
                     if (IV.ContainsKey(var))
                     {
@@ -448,14 +448,15 @@ namespace Boost_Converter_Calculator
             }
             else
             {
-                switch(input)
+                string[] parts = input.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+                switch (parts[0])
                 {
                     case "calc_r":
 
                         decimal vin_min = IVV("vin_min");
                         decimal vin_max = IVV("vin_max");
                         decimal vin_steps = IVV("Vin_steps");
-                        
+
 
                         if (Calculate(IVV("Vin_min"), false))
                         {
@@ -505,13 +506,13 @@ namespace Boost_Converter_Calculator
 
                             decimal vin_vstep = (vin_max - vin_min) / (IVV("vin_steps"));
 
-                            for (int i = 0; i < vin_steps-1; i++)
+                            for (int i = 0; i < vin_steps - 1; i++)
                             {
                                 decimal vin = (i * vin_vstep) + vin_min;
 
                                 Calculate(vin, true);
 
-                                if (vin != vin_max && i == vin_steps-2)
+                                if (vin != vin_max && i == vin_steps - 2)
                                     Calculate(vin_max, true);
                             }
                         }
@@ -523,7 +524,7 @@ namespace Boost_Converter_Calculator
                         break;
 
                     case "print":
-                            printValues();
+                        printValues();
                         break;
 
                     case "help":
@@ -532,6 +533,20 @@ namespace Boost_Converter_Calculator
 
                     case "lv":
                         lv();
+                        break;
+
+                    case "save":
+                        if (parts.Length > 1)
+                            Save(parts[1]);
+                        else
+                            wl("Need a file name to save to: 'save data.json'");
+                        break;
+
+                    case "load":
+                        if (parts.Length > 1)
+                            Load(parts[1]);
+                        else
+                            wl("Need a file name to load from: 'load data.json'");
                         break;
 
                     case "quit":
@@ -549,6 +564,44 @@ namespace Boost_Converter_Calculator
                             wl("Unknown expression!");
                         break;
                 }
+            }
+        }
+
+        static void Save(string filename)
+        {
+            try
+            {
+                string json = DynamicJson.Serialize(IV.ToDictionary(v => v.Key, v => new { Explicit = v.Value.Explicit, Val = v.Value.Val }));
+
+                File.WriteAllText(filename, json);
+
+                wl($"Saved values from memory to '{filename}'.");
+            }
+            catch (Exception ex)
+            {
+                wl(ex.ToString());
+            }
+        }
+
+        static void Load(string filename)
+        {
+            try
+            {
+                string json = File.ReadAllText(filename);
+
+                dynamic iv = DynamicJson.Parse(json);
+
+                foreach(dynamic obj in iv)
+                {
+                    IV[obj.Key].Explicit = obj.Value.Explicit;
+                    IV[obj.Key].Val = (decimal)obj.Value.Val;
+                }
+
+                wl($"Loaded values from '{filename}' to memory");
+            }
+            catch (Exception ex)
+            {
+                wl(ex.ToString());
             }
         }
 
