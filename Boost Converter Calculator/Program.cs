@@ -89,6 +89,7 @@ namespace Boost_Converter_Calculator
         static void help()
         {
             wl("=======================================================================================================================");
+            wl(" - To change a variable's value, use the following syntax: 'varName=intendedValue', for example: 'Pout=100'");
             wl(" lv          == Print a list of the names of values used in the calculator, along with a brief explanation");
             wl(" print       == Print a table of the values stored in memory");
             wl(" calc        == Calculate values in the output table, then display the table");
